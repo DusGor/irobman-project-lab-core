@@ -9,6 +9,10 @@ from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import PoseArray
 
 from irobman_project_lab_perception.srv import GetCubePoseEstimates
+from irobman_project_lab_control.msg import ManipulatorControlAction, ManipulatorControlGoal
+
+import actionlib
+
 
 import argparse
 
@@ -37,13 +41,36 @@ class Core:
         self.pub_pointcloud = rospy.Publisher("/filtered_point_cloud", PointCloud2, queue_size=10)
         self.pub_cube_pose = rospy.Publisher("/cube_pose", PoseArray, queue_size=10)
         
+        self.client = actionlib.SimpleActionClient("manipulator_control", ManipulatorControlAction)
+        rospy.loginfo("Waiting for manipulator control server ...")
+        self.client.wait_for_server()
+        rospy.loginfo("Manipulator Control Server reached!")
+
+    def _send_command(self, command: Literal["go_to_overview", "scan_cube", "pick", "place"], target_pose=None):
+        goal = ManipulatorControlGoal()
+        goal.command = command
+        if target_pose is not None:
+            goal.target_pose = target_pose
+        
+        self.client.send_goal(goal)
+        rospy.loginfo(f"Sent command {command}")
+        self.client.wait_for_result()
+        result = self.client.get_result()
+
+        if result.success:
+            rospy.loginfo(f"Action '{command}' completed successfully!")
+            return True
+        else:
+            rospy.logerr(f"Action 'command' failed!")
+            return False
+
 
     def _fetch_new_cube_estimates(self):
         # cv subsciber
         try:
             get_cube_estimates = rospy.ServiceProxy("/get_cube_pose_estimates", GetCubePoseEstimates)
             response = get_cube_estimates()
-            rospy.loginfo(f"Received Pointcloud: {response.pointcloud is not None}")
+            rospy.loginfo(f"Received PointCloud: {response.pointcloud is not None}")
             rospy.loginfo(f"Received PoseArray: {response.cubeposes is not None}")
             
             # * Publish PointCloud for Debugging
@@ -134,6 +161,7 @@ if __name__ == "__main__":
     core = Core(strategy=None)
     pc, poses = core._fetch_new_cube_estimates()
     core._update_cube_pose_estimates(poses)
+    core._send_command("go_to_overview")
 
 
     
