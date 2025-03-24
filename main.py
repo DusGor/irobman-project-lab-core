@@ -74,11 +74,15 @@ class Core:
             rospy.loginfo(f"Received PoseArray: {response.cubeposes is not None}")
             
             # * Publish PointCloud for Debugging
-            self.pub_pointcloud.publish(response.pointcloud)
+            for _ in range(10):
+                self.pub_pointcloud.publish(response.pointcloud)
+                rospy.sleep(1)
 
             # * Update tracking of cube poses
-            self._update_cube_pose_estimates(response.cubeposes)
-            
+            for _ in range(10):
+                self._update_cube_pose_estimates(response.cubeposes)
+                rospy.sleep(1)
+
             return response.pointcloud, response.cubeposes
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call failed! {e}")
