@@ -131,33 +131,51 @@ class Core:
         # In the end publish the new poseArray 
         self.pub_cube_pose.publish(poses)
 
-
     def _get_cube_order(self) -> list:
-
         cube_order = []
         cube_poses = self._get_cube_poses()
-        points = []
-        labels = []
+        tower_pose = self._get_ideal_tower_location()
+        tower_position = (tower_pose.position.x, tower_pose.position.y)
 
+        # Compute distances of cubes to the tower
+        cube_distances = []
         for key, value in cube_poses.items():
-            value.position.z = 0  # We dont care about height
-
-            labels.append(key)
-            points.append((value.position.x, value.position.y))
-
-        # print(points)
-        tree = KDTree(points)
-        distances, _ = tree.query(points, k=2)  # Get nearest neighbors of points
-        nearest_distances = distances[
-            :, 1
-        ]  # Get only nearest neighbor distances (not to self)
-        sorted_indices = np.argsort(
-            -nearest_distances
-        )  # Sort indices based on nearest neighbor distance
-        # print(nearest_distances)
-        # Sort labels by rank (sorted_indices gives the order based on distance)
-        cube_order = [labels[idx] for idx in sorted_indices]
+            cube_position = (value.position.x, value.position.y)
+            distance = np.linalg.norm(np.array(cube_position) - np.array(tower_position))
+            cube_distances.append((distance, key))
+        
+        # Sort cubes by distance to tower (closest first)
+        cube_distances.sort()
+        cube_order = [key for _, key in cube_distances]
+        
         return cube_order
+        
+    # def _get_cube_order(self) -> list:
+
+    #     cube_order = []
+    #     cube_poses = self._get_cube_poses()
+    #     points = []
+    #     labels = []
+
+    #     for key, value in cube_poses.items():
+    #         value.position.z = 0  # We dont care about height
+
+    #         labels.append(key)
+    #         points.append((value.position.x, value.position.y))
+
+    #     # print(points)
+    #     tree = KDTree(points)
+    #     distances, _ = tree.query(points, k=2)  # Get nearest neighbors of points
+    #     nearest_distances = distances[
+    #         :, 1
+    #     ]  # Get only nearest neighbor distances (not to self)
+    #     sorted_indices = np.argsort(
+    #         -nearest_distances
+    #     )  # Sort indices based on nearest neighbor distance
+    #     # print(nearest_distances)
+    #     # Sort labels by rank (sorted_indices gives the order based on distance)
+    #     cube_order = [labels[idx] for idx in sorted_indices]
+    #     return cube_order
 
 
 
