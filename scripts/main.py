@@ -41,7 +41,7 @@ class Core:
         self.cube_poses: dict[str, geometry_msgs.msg.Pose] = {} # Has to be filled by Perc
         self.cube_pose_dict = {}  # Maps cube_id -> Pose
         self.next_cube_id = 0     # Next available cube id for a new cube.
-        self.matching_threshold = 0.1  # Distance threshold in meters for matching cubes.
+        self.matching_threshold = 0.03  # Distance threshold in meters for matching cubes.
         self.strategy = strategy
 
         self.pub_pointcloud = rospy.Publisher("/filtered_point_cloud", PointCloud2, queue_size=10)
@@ -123,7 +123,7 @@ class Core:
 
             # * Update tracking of cube poses
             for _ in range(10):
-                self._update_cube_pose_estimates(response.cubeposes)
+                self.pub_cube_pose.publish(response.cubeposes)
                 rospy.sleep(1)
 
             return response.pointcloud, response.cubeposes
@@ -155,12 +155,14 @@ class Core:
 
             if best_match_id is not None:
                 # Update the matched cube with the new pose.
+                print(f"Updating cube {best_match_id}")
                 self.cube_pose_dict[best_match_id] = new_pose
                 updated_ids.add(best_match_id)
                 matched = True
 
             if not matched:
                 # No match found; add as a new cube.
+                print(f"Creating new cube {self.next_cube_id}")
                 self.cube_pose_dict[self.next_cube_id] = new_pose
                 updated_ids.add(self.next_cube_id)
                 self.next_cube_id += 1
@@ -173,6 +175,8 @@ class Core:
         
         # Publish the updated PoseArray.
         self.pub_cube_pose.publish(updated_pose_array)
+
+        
 
         # # TODO: Need to track the cube poses and update their poses as new information becomes available
 
@@ -222,6 +226,7 @@ class Core:
 
         # print(points)
         tree = KDTree(points)
+        # TODO: this fails if points is only of len 1
         distances, _ = tree.query(points, k=2)  # Get nearest neighbors of points
         nearest_distances = distances[
             :, 1
@@ -317,8 +322,3 @@ if __name__ == "__main__":
     pc, poses = core._fetch_new_cube_estimates()
     core._update_cube_pose_estimates(poses)
     core._build_tower()
-    
-
-
-
-
