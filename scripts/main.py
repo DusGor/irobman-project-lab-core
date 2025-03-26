@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument(
-    "--sim_mode", type=bool, default=True, help="Whether to configure the node for simulation or the real robot"
+    "--sim_mode", type=bool, default=False, help="Whether to configure the node for simulation or the real robot"
 )
 
 # parse the arguments
@@ -252,7 +252,7 @@ class Core:
             raise ValueError("No cube positions available!")
             
         # Define the search space (adjust based on table size)
-        x_min, x_max = 0.4, 0.7  
+        x_min, x_max = 0.4, 0.6  
         y_min, y_max = -0.15, 0.15 # Tried -0.3:0.3 here but arm grip was getting unstable when passing singularities
         grid_resolution = 200  # Number of points per axis
         
@@ -296,14 +296,16 @@ class Core:
         for cube_name in self._get_cube_order():
 
             rospy.loginfo(f"Pick&Place for {cube_name}")
-            self._send_command(command="scan_cube", target_pose=self._get_cube_pose(cube_name))
-            _, poses = self._fetch_new_cube_estimates()
-            self._update_cube_pose_estimates(poses)
+            # self._send_command(command="scan_cube", target_pose=self._get_cube_pose(cube_name))
+            # _, poses = self._fetch_new_cube_estimates()
+            # self._update_cube_pose_estimates(poses)
             self._send_command(command="pick", target_pose=self._get_cube_pose(cube_name))
             
-            tower_pose.position.z = 0.01 + 0.042 + 0.08 + (i * (0.042))
+            tower_pose.position.z = 0.008 + 0.042 + 0.08 + (i * (0.045))
             rospy.loginfo("Initializing Place...")
             self._send_command(command="place", target_pose=tower_pose)
+
+            core._send_command("go_to_overview")
 
             i += 1
 
@@ -319,6 +321,8 @@ if __name__ == "__main__":
     
     
     core._send_command("go_to_overview")
+    rospy.sleep(2)
     pc, poses = core._fetch_new_cube_estimates()
     core._update_cube_pose_estimates(poses)
     core._build_tower()
+    core._send_command("go_to_overview")
